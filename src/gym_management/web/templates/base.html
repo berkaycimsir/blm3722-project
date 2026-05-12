@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}{{ title }} — Spor Salonu{% endblock %}</title>
+  <link rel="stylesheet" href="/ui/static/styles.css" />
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="app">
+{% macro nav_link(href, label) -%}
+  {%- set cur = request.url.path.rstrip('/') -%}
+  {%- set h = href.rstrip('/') -%}
+  {%- if h == '/ui' -%}
+    {%- set active = (cur == '/ui' or cur == '') -%}
+  {%- else -%}
+    {%- set active = (cur == h) -%}
+  {%- endif -%}
+  <a href="{{ href }}" class="nav-link{% if active %} is-active{% endif %}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+{%- endmacro %}
+
+  <header class="site-header">
+    <div class="site-header__bar">
+      <div class="header-shell">
+        <a class="brand" href="/ui/">
+          Spor salonu YBS
+          <span>Yönetim paneli</span>
+        </a>
+        <div class="nav-scroll" role="presentation">
+          <nav class="primary-nav" aria-label="Ana menü">
+            {{ nav_link('/ui/', 'Panel') }}
+            {{ nav_link('/ui/members', 'Üyeler') }}
+            {{ nav_link('/ui/packages', 'Paketler') }}
+            {{ nav_link('/ui/subscriptions', 'Abonelikler') }}
+            {{ nav_link('/ui/equipment', 'Ekipman') }}
+            {{ nav_link('/ui/budget', 'Bütçe') }}
+            {{ nav_link('/ui/reports', 'Rapor') }}
+            {{ nav_link('/docs', 'API') }}
+          </nav>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="container">
+      {% if request.query_params.get('ok') %}
+        <p class="flash flash--ok" role="status">İşlem kaydedildi.</p>
+      {% endif %}
+      {% if request.query_params.get('err') %}
+        <p class="flash flash--err" role="alert">{{ request.query_params.get('err') }}</p>
+      {% endif %}
+      <div class="page-head">
+        <h1 class="page-title">{{ title }}</h1>
+        {% block subtitle %}{% endblock %}
+      </div>
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+  {% block extra_body %}{% endblock %}
+</body>
+</html>

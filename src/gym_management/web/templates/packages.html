@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block subtitle %}<p class="page-subtitle">Üyelik paketleri ve fiyatlar</p>{% endblock %}
+{% block content %}
+
+<details class="disclose">
+  <summary>Yeni paket ekle</summary>
+  <div class="disclose-body">
+    <form method="post" action="/ui/packages" class="form-stack">
+      <div class="row">
+        <div class="field">
+          <label for="pname">Paket adı</label>
+          <input id="pname" name="name" required placeholder="Örn. Hafta içi sabah" />
+        </div>
+        <div class="field">
+          <label for="pprice">Fiyat (₺)</label>
+          <input id="pprice" name="price" required inputmode="decimal" placeholder="1499.00" />
+        </div>
+        <div class="field">
+          <label for="pbill">Faturalama</label>
+          <select id="pbill" name="billing_cycle_months" required>
+            <option value="1" selected>Aylık (her ay)</option>
+            <option value="3">3 aylık</option>
+            <option value="6">6 aylık</option>
+            <option value="12">Yıllık</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pkind">Tür (giriş kuralları)</label>
+          <select id="pkind" name="kind" required>
+            <option value="fixed_two_days">Haftanın 2 günü</option>
+            <option value="fixed_three_days">Haftanın 3 günü</option>
+            <option value="daily_time_window">Günlük saat penceresi</option>
+          </select>
+        </div>
+      </div>
+      <p class="form-hint">
+        <strong>Fiyat</strong>, seçtiğiniz faturalama dönemi başına tutardır (ör. yıllık pakette tek ödeme tutarı).
+        <strong>Tür</strong>, salona kaç gün / hangi saatlerde girilebileceğini belirler (haftalık giriş kuralı).
+      </p>
+      <p class="form-hint">
+        Sabit gün paketlerinde günleri virgülle yazın (<span class="mono">0=Pzt … 6=Paz</span>). Örn. 2 gün: <span class="mono">0,3</span>; 3 gün: <span class="mono">0,2,5</span>.
+      </p>
+      <div class="row">
+        <div class="field">
+          <label for="pdays">İzinli günler</label>
+          <input id="pdays" name="allowed_weekdays" type="text" placeholder="0,3" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="pwstart">Pencere başlangıç</label>
+          <input id="pwstart" name="window_start" type="time" />
+        </div>
+        <div class="field">
+          <label for="pwend">Pencere bitiş</label>
+          <input id="pwend" name="window_end" type="time" />
+        </div>
+      </div>
+      <div class="form-actions form-actions--tight">
+        <button type="submit">Paketi kaydet</button>
+      </div>
+    </form>
+  </div>
+</details>
+
+<div class="pkg-grid">
+  {% for p in packages %}
+  <article class="pkg-card">
+    <h3>{{ p.name }}</h3>
+    <p class="price">{{ p.price_amount }} <small class="currency muted">₺</small>
+      <span class="muted">/ {% if p.billing_cycle_months == 12 %}yıllık{% elif p.billing_cycle_months == 1 %}aylık{% else %}{{ p.billing_cycle_months }} aylık{% endif %} dönem</span>
+    </p>
+    <p class="meta mono">{{ p.kind.value }}</p>
+    <p class="meta">
+      {% if p.allowed_weekdays %}
+        Günler: {{ p.allowed_weekdays | list | sort | join(', ') }} <span class="muted">(0=Pzt…6=Paz)</span>
+      {% elif p.window_start and p.window_end %}
+        Saat: {{ p.window_start }} – {{ p.window_end }}
+      {% else %}—{% endif %}
+    </p>
+  </article>
+  {% endfor %}
+</div>
+
+{% if not packages %}
+<p class="muted">Paket tanımı yok.</p>
+{% endif %}
+{% endblock %}

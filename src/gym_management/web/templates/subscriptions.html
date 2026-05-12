@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block subtitle %}
+<p class="page-subtitle">
+  Tahsilat özeti · Liste fiyatı, paketin <strong>faturalama dönemi</strong> başına tutardır (aylık, 3 aylık, yıllık vb.).
+  Beklenen toplam = dönem sayısı × bu tutar (abonelik başlangıcı–bitiş; bitiş yoksa bugüne kadar, ay bazında).
+</p>
+{% endblock %}
+{% block content %}
+
+<details class="disclose">
+  <summary>Yeni abonelik oluştur</summary>
+  <div class="disclose-body">
+  {% if subscribers and packages %}
+    <form method="post" action="/ui/subscriptions/membership" class="form-stack">
+      <div class="row">
+        <div class="field">
+          <label for="sid">Üye</label>
+          <select id="sid" name="subscriber_id" required>
+            {% for s in subscribers %}
+            <option value="{{ s.id }}">{{ s.full_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="pid">Paket</label>
+          <select id="pid" name="package_id" required>
+            {% for p in packages %}
+            <option value="{{ p.id }}">{{ p.name }} — {{ p.price_amount }} ₺/{% if p.billing_cycle_months == 12 %}yıl{% elif p.billing_cycle_months == 1 %}ay{% else %}{{ p.billing_cycle_months }} ay{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="sd">Başlangıç</label>
+          <input id="sd" name="start_date" type="date" required />
+        </div>
+        <div class="field">
+          <label for="ed">Bitiş (opsiyonel)</label>
+          <input id="ed" name="end_date" type="date" />
+        </div>
+      </div>
+      <div class="form-actions form-actions--tight">
+        <button type="submit">Oluştur</button>
+      </div>
+    </form>
+  {% else %}
+    <p class="muted">Önce üye ve paket gerekir.</p>
+  {% endif %}
+  </div>
+</details>
+
+<div class="card">
+  <h2 class="card-title">Abonelikler</h2>
+  {% if rows %}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Üye</th>
+        <th>Paket</th>
+        <th>Dönem</th>
+        <th>Beklenen</th>
+        <th>Ödenen</th>
+        <th>Kalan</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      {% set m = row.membership %}
+      {% set s = row.subscriber %}
+      {% set p = row.package %}
+      <tr>
+        <td class="mono">{{ m.id }}</td>
+        <td>{{ s.full_name }}</td>
+        <td>
+          {% if p %}
+            {{ p.name }}
+            <p class="cell-sub mono">#{{ p.id }} · {{ p.price_amount }} ₺ / <span class="billing-tag">{{ row.billing_label }} dönem</span></p>
+          {% else %}
+            <span class="mono muted">#{{ m.package_id }}</span>
+          {% endif %}
+        </td>
+        <td>{{ m.start_date }}{% if m.end_date %} → {{ m.end_date }}{% else %} → …{% endif %}</td>
+        <td>
+          {% if p %}
+            <strong>{{ row.expected_total }}</strong> ₺
+            <p class="cell-sub">{{ row.billing_periods }} dönem × {{ p.price_amount }} ₺ ({{ row.billing_label }})</p>
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td><strong>{{ row.total_paid }}</strong> ₺</td>
+        <td>
+          {% if p %}
+            {% if row.remaining_due %}
+              <strong>{{ row.remaining_due }}</strong> ₺
+            {% elif row.credit %}
+              <span class="muted">{{ row.credit }} ₺ fazla</span>
+            {% elif row.settled %}
+              <span class="muted">Kapandı</span>
+            {% else %}
+              <span class="muted">—</span>
+            {% endif %}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td>
+          <details>
+            <summary class="muted">Ödeme</summary>
+            <form class="inline-pay pay-embed" method="post" action="/ui/subscriptions/{{ m.id }}/pay">
+              <div class="field">
+                <label for="pay-amt-{{ m.id }}">Tutar (₺)</label>
+                <input id="pay-amt-{{ m.id }}" name="amount" type="text" placeholder="0.00" required />
+              </div>
+              <div class="field">
+                <label for="pay-note-{{ m.id }}">Not</label>
+                <input id="pay-note-{{ m.id }}" name="note" type="text" placeholder="İsteğe bağlı" />
+              </div>
+              <div class="form-actions form-actions--tight">
+                <button type="submit">Kaydet</button>
+              </div>
+            </form>
+          </details>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Kayıtlı abonelik yok.</p>
+  {% endif %}
+</div>
+{% endblock %}

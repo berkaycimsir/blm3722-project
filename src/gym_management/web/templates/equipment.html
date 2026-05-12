@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Ekipman envanteri — Spor Salonu{% endblock %}
+{% block extra_head %}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+{% endblock %}
+{% block subtitle %}
+<p class="page-subtitle equip-subtitle">Envanter özeti, salon içi bakım ve dış servis kayıtları — özet tek satırda, ayrıntı isteğe bağlı açılır.</p>
+{% endblock %}
+{% block content %}
+
+<div class="page-equipment">
+  <details class="disclose disclose--tight">
+    <summary>Yeni ekipman ekle</summary>
+    <div class="disclose-body">
+      <form method="post" action="/ui/equipment/new" class="form-stack">
+        <div class="row">
+          <div class="field">
+            <label for="en">Ad</label>
+            <input id="en" name="name" required placeholder="Örn. Lat pulldown" />
+          </div>
+          <div class="field">
+            <label for="sn">Seri numarası</label>
+            <input id="sn" name="serial_number" placeholder="Opsiyonel" />
+          </div>
+          <div class="field">
+            <label for="st">Durum</label>
+            <select id="st" name="status">
+              {% for value, label in status_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-actions form-actions--tight">
+          <button type="submit">Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </details>
+
+  {% if items %}
+  <section class="equip-dash" aria-label="Durum özeti">
+    <div class="equip-dash__chip equip-dash__chip--ok">
+      <span class="equip-dash__n">{{ status_counts.get('operational', 0) }}</span>
+      <span class="equip-dash__l">Çalışır</span>
+    </div>
+    <div class="equip-dash__chip equip-dash__chip--warn">
+      <span class="equip-dash__n">{{ status_counts.get('maintenance', 0) }}</span>
+      <span class="equip-dash__l">Bakımda</span>
+    </div>
+    <div class="equip-dash__chip equip-dash__chip--danger">
+      <span class="equip-dash__n">{{ status_counts.get('out_for_repair', 0) }}</span>
+      <span class="equip-dash__l">Serviste</span>
+    </div>
+    <p class="equip-dash__hint muted">Aşağıda her satır bir cihazdır; kayıt eklemek için satırı açın.</p>
+  </section>
+
+  <nav class="equip-toc" aria-label="Cihaz listesine hızlı git">
+    <span class="equip-toc__label muted">Git:</span>
+    {% for item in items %}
+    {% set e = item.equipment %}
+    <a class="equip-toc__link" href="#eq-{{ e.id }}" title="{{ e.name }}">#{{ e.id }}</a>
+    {% endfor %}
+  </nav>
+
+  <div class="equip-list" role="list">
+    {% for item in items %}
+    {% set e = item.equipment %}
+    <article id="eq-{{ e.id }}" class="equip-strip equip-strip--{{ e.status.value }}" role="listitem">
+      <div class="equip-strip__head">
+        <span class="equip-strip__rail" aria-hidden="true"></span>
+        <div class="equip-strip__main">
+          <div class="equip-strip__title-row">
+            <h2 class="equip-strip__name">{{ e.name }}</h2>
+            <span class="equip-strip__id mono">#{{ e.id }}</span>
+          </div>
+          <div class="equip-strip__meta">
+            {% if e.serial_number %}
+            <span class="equip-strip__sn mono">{{ e.serial_number }}</span>
+            {% else %}
+            <span class="muted">Seri no yok</span>
+            {% endif %}
+            <span class="equip-strip__badge">
+              {% if e.status.value == 'operational' %}Çalışır
+              {% elif e.status.value == 'maintenance' %}Bakımda
+              {% else %}Serviste{% endif %}
+            </span>
+            <span class="equip-strip__counts muted">
+              Bakım <strong>{{ item.maint_count }}</strong>
+              · Tamir <strong>{{ item.repair_count }}</strong>
+              {% if item.last_maint %}
+              · Son bakım <strong class="mono">{{ item.last_maint }}</strong>
+              {% endif %}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <details class="equip-strip__details">
+        <summary class="equip-strip__summary">Kayıtlar ve formlar</summary>
+        <div class="equip-strip__body">
+          <div class="equip-strip__cols">
+            <div class="equip-col equip-col--history">
+              {% if item.maintenance %}
+              <h3 class="equip-col__h">Salon bakımı</h3>
+              <div class="table-wrap table-wrap--dense">
+                <table class="table-dense">
+                  <thead>
+                    <tr><th>Tarih</th><th>₺</th><th>Not</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for r in item.maintenance %}
+                    {% if r.id %}
+                    <tr>
+                      <td class="mono">{{ r.performed_on }}</td>
+                      <td class="mono">{{ r.cost_amount }}</td>
+                      <td>{{ r.description }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% else %}
+              <p class="muted equip-col__empty">Bakım kaydı yok.</p>
+              {% endif %}
+
+              {% if item.repairs %}
+              <h3 class="equip-col__h equip-col__h--spaced">Dış servis</h3>
+              <div class="table-wrap table-wrap--dense">
+                <table class="table-dense">
+                  <thead>
+                    <tr><th>Servis</th><th>Tarih</th><th>₺</th><th>Not</th></tr>
+                  </thead>
+                  <tbody>
+                    {% for r in item.repairs %}
+                    {% if r.id %}
+                    <tr>
+                      <td>{{ r.service_vendor }}</td>
+                      <td class="mono">{{ r.sent_on }}{% if r.returned_on %} → {{ r.returned_on }}{% endif %}</td>
+                      <td class="mono">{{ r.cost_amount }}</td>
+                      <td>{{ r.description }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="equip-col equip-col--forms">
+              <details class="disclose disclose--nested" open>
+                <summary>Salon bakımı ekle</summary>
+                <div class="disclose-body">
+                  <form method="post" action="/ui/equipment/{{ e.id }}/maintenance" class="form-stack form-stack--compact">
+                    <div class="row row--compact">
+                      <div class="field">
+                        <label for="maint-date-{{ e.id }}">Tarih</label>
+                        <input id="maint-date-{{ e.id }}" name="performed_on" type="date" required />
+                      </div>
+                      <div class="field">
+                        <label for="maint-cost-{{ e.id }}">Maliyet</label>
+                        <input id="maint-cost-{{ e.id }}" name="cost" type="text" placeholder="0.00" required />
+                      </div>
+                    </div>
+                    <div class="field field--full">
+                      <label for="maint-desc-{{ e.id }}">Açıklama</label>
+                      <textarea id="maint-desc-{{ e.id }}" name="description" required rows="2"></textarea>
+                    </div>
+                    <div class="form-actions form-actions--tight">
+                      <button type="submit">Ekle</button>
+                    </div>
+                  </form>
+                </div>
+              </details>
+
+              <details class="disclose disclose--nested">
+                <summary>Teknik servis (tamir)</summary>
+                <div class="disclose-body">
+                  <form method="post" action="/ui/equipment/{{ e.id }}/repair" class="form-stack form-stack--compact">
+                    <div class="row row--compact">
+                      <div class="field">
+                        <label for="rep-vendor-{{ e.id }}">Servis</label>
+                        <input id="rep-vendor-{{ e.id }}" name="service_vendor" required />
+                      </div>
+                      <div class="field">
+                        <label for="rep-sent-{{ e.id }}">Gönderiliş</label>
+                        <input id="rep-sent-{{ e.id }}" name="sent_on" type="date" required />
+                      </div>
+                      <div class="field">
+                        <label for="rep-ret-{{ e.id }}">İade</label>
+                        <input id="rep-ret-{{ e.id }}" name="returned_on" type="date" />
+                      </div>
+                      <div class="field">
+                        <label for="rep-cost-{{ e.id }}">Maliyet</label>
+                        <input id="rep-cost-{{ e.id }}" name="cost" type="text" required />
+                      </div>
+                    </div>
+                    <div class="field field--full">
+                      <label for="rep-desc-{{ e.id }}">Açıklama</label>
+                      <textarea id="rep-desc-{{ e.id }}" name="description" required rows="2"></textarea>
+                    </div>
+                    <div class="form-actions form-actions--tight">
+                      <button type="submit">Ekle</button>
+                    </div>
+                  </form>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </details>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if not items %}
+  <p class="muted">Kayıtlı ekipman yok.</p>
+  {% endif %}
+</div>
+{% endblock %}

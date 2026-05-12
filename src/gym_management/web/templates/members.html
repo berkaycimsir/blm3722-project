@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block subtitle %}<p class="page-subtitle">Üye kayıtları, abonelik paketleri ve spor yapabilir raporu</p>{% endblock %}
+{% block content %}
+
+<details class="disclose">
+  <summary>Yeni kayıt ekle</summary>
+  <div class="disclose-body">
+    <h3 class="section-label">Sağlık raporu</h3>
+    <form method="post" action="/ui/members/report" class="form-stack">
+      <div class="row">
+        <div class="field">
+          <label for="inst">Kurum</label>
+          <input id="inst" name="institution_name" required placeholder="Örn. Aile sağlığı merkezi" />
+        </div>
+        <div class="field">
+          <label for="issued">Veriliş tarihi</label>
+          <input id="issued" name="issued_on" type="date" required />
+        </div>
+      </div>
+      <div class="form-actions form-actions--tight">
+        <button type="submit">Raporu kaydet</button>
+      </div>
+    </form>
+    <h3 class="section-label">Üye</h3>
+    <form method="post" action="/ui/members/subscriber" class="form-stack">
+      <div class="row">
+        <div class="field">
+          <label for="fn">Ad soyad</label>
+          <input id="fn" name="full_name" required />
+        </div>
+        <div class="field">
+          <label for="em">E-posta</label>
+          <input id="em" name="email" type="email" required />
+        </div>
+        <div class="field">
+          <label for="ph">Telefon</label>
+          <input id="ph" name="phone" required />
+        </div>
+        <div class="field">
+          <label for="mr">Bağlı rapor ID (opsiyonel)</label>
+          <input id="mr" name="medical_report_id" type="number" min="1" placeholder="Boş bırakılabilir" />
+        </div>
+      </div>
+      <div class="form-actions form-actions--tight">
+        <button type="submit">Üyeyi kaydet</button>
+      </div>
+    </form>
+  </div>
+</details>
+
+<div class="card card--members-table">
+  <h2 class="card-title">Üyeler</h2>
+  {% if subscribers %}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Ad</th>
+        <th>E-posta</th>
+        <th>Telefon</th>
+        <th>Paket</th>
+        <th>Rapor</th>
+        <th>Rapor bitiş</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in subscribers %}
+      <tr>
+        <td class="mono">{{ s.id }}</td>
+        <td>{{ s.full_name }}</td>
+        <td>{{ s.email }}</td>
+        <td>{{ s.phone }}</td>
+        <td class="td-pkgs">
+          {% set items = member_subscriptions.get(s.id) or [] %}
+          {% if items %}
+            {% for item in items %}
+              {% set m = item.membership %}
+              {% set p = item.package %}
+            <div class="pkg-chip-row">
+              <div class="pkg-pop">
+                <button type="button" class="pkg-pop-trigger">
+                  {% if p %}{{ p.name }}{% else %}Paket #{{ m.package_id }}{% endif %}
+                </button>
+                <div class="pkg-pop-panel" role="tooltip">
+                  <p class="pkg-pop-panel__title">{% if p %}{{ p.name }}{% else %}Bilinmeyen paket{% endif %}</p>
+                  <dl class="sub-pop-dl">
+                    <dt>Abonelik</dt>
+                    <dd class="mono">#{{ m.id }}</dd>
+                    <dt>Paket no</dt>
+                    <dd class="mono">{{ m.package_id }}</dd>
+                    <dt>Durum</dt>
+                    <dd>{% if m.status.value == 'active' %}Aktif{% elif m.status.value == 'expired' %}Süresi dolmuş{% elif m.status.value == 'cancelled' %}İptal{% else %}{{ m.status.value }}{% endif %}</dd>
+                    {% if p %}<dt>Liste fiyatı</dt>
+                    <dd>{{ p.price_amount }} ₺ / {% if p.billing_cycle_months == 12 %}yıllık{% elif p.billing_cycle_months == 1 %}aylık{% else %}{{ p.billing_cycle_months }} aylık{% endif %}</dd>{% endif %}
+                    <dt>Başlangıç</dt>
+                    <dd>{{ m.start_date }}</dd>
+                    <dt>Bitiş</dt>
+                    <dd>{% if m.end_date %}{{ m.end_date }}{% else %}<span class="muted">Süresiz</span>{% endif %}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <span class="muted">—</span>
+          {% endif %}
+        </td>
+        <td>{% if s.medical_report_id %}<span class="mono">{{ s.medical_report_id }}</span>{% else %}—{% endif %}</td>
+        <td>
+          {% if s.medical_report_id and report_by_id.get(s.medical_report_id) %}
+            {{ report_by_id[s.medical_report_id].expires_on() }}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Henüz üye yok.</p>
+  {% endif %}
+</div>
+
+<details class="disclose" id="raporlar">
+  <summary>Tüm sağlık raporları ve uyarı listesi</summary>
+  <div class="disclose-body">
+    <p class="form-hint">Yakın zamanda (≤365 gün) bitecek veya süresi geçmiş raporlar aşağıda.</p>
+    {% if expiring %}
+    <div class="table-wrap stack-sm">
+    <table>
+      <thead><tr><th>ID</th><th>Kurum</th><th>Veriliş</th><th>Bitiş</th></tr></thead>
+      <tbody>
+        {% for r in expiring %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td>{{ r.institution_name }}</td>
+          <td>{{ r.issued_on }}</td>
+          <td>{{ r.expires_on() }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+    {% if reports %}
+    <h3 class="section-label stack-sm">Tam kayıt listesi</h3>
+    <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Kurum</th><th>Veriliş</th><th>Bitiş</th></tr></thead>
+      <tbody>
+        {% for r in reports %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td>{{ r.institution_name }}</td>
+          <td>{{ r.issued_on }}</td>
+          <td>{{ r.expires_on() }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% endif %}
+  </div>
+</details>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+(function () {
+  var root = document.querySelector('.card--members-table');
+  if (!root) return;
+
+  function place(pop) {
+    var trigger = pop.querySelector('.pkg-pop-trigger');
+    var panel = pop.querySelector('.pkg-pop-panel');
+    if (!trigger || !panel || !panel.classList.contains('pkg-pop-panel--open')) return;
+    var rect = trigger.getBoundingClientRect();
+    var gap = 8;
+    var vw = window.innerWidth;
+    var vh = window.innerHeight;
+    panel.style.position = 'fixed';
+    panel.style.margin = '0';
+    panel.style.zIndex = '2147483000';
+    var pr = panel.getBoundingClientRect();
+    var w = pr.width || 260;
+    var h = pr.height || 200;
+    var left = rect.right + gap;
+    var top = rect.top;
+    if (left + w > vw - 12) {
+      left = rect.left - w - gap;
+    }
+    if (left < 12) left = 12;
+    if (top + h > vh - 12) {
+      top = Math.max(12, vh - h - 12);
+    }
+    if (top < 12) top = 12;
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+  }
+
+  function openPop(pop) {
+    clearTimeout(pop._pkgHide);
+    var panel = pop.querySelector('.pkg-pop-panel');
+    if (!panel) return;
+    panel.classList.add('pkg-pop-panel--open');
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { place(pop); });
+    });
+  }
+
+  function closePop(pop) {
+    var panel = pop.querySelector('.pkg-pop-panel');
+    if (!panel) return;
+    pop._pkgHide = setTimeout(function () {
+      panel.classList.remove('pkg-pop-panel--open');
+      panel.style.left = '';
+      panel.style.top = '';
+    }, 100);
+  }
+
+  root.querySelectorAll('.pkg-pop').forEach(function (pop) {
+    var trig = pop.querySelector('.pkg-pop-trigger');
+    if (!trig) return;
+    pop.addEventListener('mouseenter', function () { openPop(pop); });
+    pop.addEventListener('mouseleave', function () { closePop(pop); });
+    trig.addEventListener('focus', function () { openPop(pop); });
+    trig.addEventListener('blur', function () { closePop(pop); });
+  });
+
+  function reflowOpen() {
+    root.querySelectorAll('.pkg-pop-panel--open').forEach(function (panel) {
+      var pop = panel.closest('.pkg-pop');
+      if (pop) place(pop);
+    });
+  }
+  window.addEventListener('scroll', reflowOpen, true);
+  window.addEventListener('resize', reflowOpen);
+})();
+</script>
+{% endblock %}

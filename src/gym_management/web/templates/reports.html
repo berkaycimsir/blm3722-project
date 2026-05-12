@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block subtitle %}
+<p class="page-subtitle">Seçilen aralıkta salon bakımı ve dış tamir toplamları · <span class="mono">{{ start }} – {{ end }}</span></p>
+{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2 class="card-title">Tarih aralığı</h2>
+  <p class="muted hint-block">
+    İlk açılışta son <strong>120 gün</strong> seçilir. İsterseniz aralığı değiştirip <strong>Hesapla</strong>ya basın.
+  </p>
+  <form method="get" action="/ui/reports" class="form-stack">
+    <div class="row row--compact">
+      <div class="field">
+        <label for="rep-start">Başlangıç</label>
+        <input id="rep-start" name="start" type="date" value="{{ start.isoformat() }}" required />
+      </div>
+      <div class="field">
+        <label for="rep-end">Bitiş</label>
+        <input id="rep-end" name="end" type="date" value="{{ end.isoformat() }}" required />
+      </div>
+    </div>
+    <div class="form-actions form-actions--tight">
+      <button type="submit" class="secondary">Hesapla</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <h2 class="card-title">Toplamlar</h2>
+  {% if totals_empty %}
+  <p class="muted hint-block">
+    Bu aralıkta bakım veya tamir kaydı yok. Tarihleri genişletin veya <a href="/ui/equipment">Ekipman</a> sayfasından kayıt ekleyin.
+  </p>
+  {% endif %}
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Kalem</th><th>Tutar</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Salon bakımı</td><td><strong>{{ maintenance_total }} ₺</strong></td></tr>
+      <tr><td>Teknik servis (tamir)</td><td><strong>{{ repair_total }} ₺</strong></td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

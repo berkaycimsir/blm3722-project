@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block subtitle %}<p class="page-subtitle">Aylık plan ve gerçekleşen tutarlar</p>{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h2 class="card-title">Dönem</h2>
+  <form method="get" action="/ui/budget" class="form-stack">
+    <div class="row row--compact">
+      <div class="field">
+        <label for="budget-year">Yıl</label>
+        <input id="budget-year" name="year" type="number" value="{{ year }}" min="2020" max="2100" required />
+      </div>
+      <div class="field">
+        <label for="budget-month">Ay</label>
+        <input id="budget-month" name="month" type="number" value="{{ month }}" min="1" max="12" required />
+      </div>
+    </div>
+    <div class="form-actions form-actions--tight">
+      <button type="submit" class="secondary">Göster</button>
+    </div>
+  </form>
+</div>
+
+<details class="disclose">
+  <summary>Satır ekle veya güncelle</summary>
+  <div class="disclose-body">
+    <form method="post" action="/ui/budget/line" class="form-stack">
+      <input type="hidden" name="period_year" value="{{ year }}" />
+      <input type="hidden" name="period_month" value="{{ month }}" />
+      <div class="row">
+        <div class="field">
+          <label for="budget-cat">Kategori</label>
+          <select id="budget-cat" name="category" required>
+            {% for c in categories %}
+            <option value="{{ c.value }}">{{ c.value }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="budget-planned">Planlanan (₺)</label>
+          <input id="budget-planned" name="planned" type="text" placeholder="0.00" required />
+        </div>
+        <div class="field">
+          <label for="budget-actual">Gerçekleşen (₺)</label>
+          <input id="budget-actual" name="actual" type="text" placeholder="0.00" required />
+        </div>
+      </div>
+      <div class="form-actions form-actions--tight">
+        <button type="submit">Kaydet</button>
+      </div>
+    </form>
+  </div>
+</details>
+
+<div class="card">
+  <h2 class="card-title">{{ year }} · {{ month }} · Özet</h2>
+  {% if lines %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Kategori</th><th>Planlanan</th><th>Gerçekleşen</th></tr></thead>
+    <tbody>
+      {% for ln in lines %}
+      <tr>
+        <td class="mono">{{ ln.category.value }}</td>
+        <td>{{ ln.planned_amount }} ₺</td>
+        <td>{{ ln.actual_amount }} ₺</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">Bu dönem için satır yok.</p>
+  {% endif %}
+</div>
+{% endblock %}

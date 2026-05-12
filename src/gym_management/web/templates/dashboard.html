@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block subtitle %}
+<p class="page-subtitle">Güncel durum · {{ today.strftime('%d.%m.%Y') }}</p>
+{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+{% endblock %}
+{% block content %}
+
+<div class="stats">
+  <div class="stat"><span>{{ subscriber_count }}</span><small>Üye</small></div>
+  <div class="stat"><span>{{ subscription_count }}</span><small>Abonelik</small></div>
+  <div class="stat"><span>{{ equipment_count }}</span><small>Ekipman</small></div>
+  <div class="stat"><span class="mono">{{ payments_mtd }}</span><small>Bu ay ödeme (₺)</small></div>
+</div>
+
+<div class="chart-grid">
+  <div class="chart-card">
+    <h3>Son 6 ay — tahsilat</h3>
+    <div class="chart-wrap">
+      <canvas id="chartTrend" aria-label="Ödeme trendi"></canvas>
+    </div>
+  </div>
+  <div class="chart-card">
+    <h3>Bu ay bütçe — plan vs gerçekleşen</h3>
+    <div class="chart-wrap">
+      <canvas id="chartBudget" aria-label="Bütçe"></canvas>
+    </div>
+    <p class="muted" id="budgetFallback" hidden>Bu ay için bütçe satırı yok. <a href="/ui/budget">Bütçe</a> sayfasından ekleyin.</p>
+  </div>
+  <div class="chart-card">
+    <h3>Ekipman durumu</h3>
+    <div class="chart-wrap chart-wrap--sm">
+      <canvas id="chartEquip" aria-label="Ekipman"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="dash-medical-wrap">
+  <section class="dash-medical" aria-labelledby="dash-medical-title">
+    <header class="dash-medical__head">
+      <div class="dash-medical__intro">
+        <h2 id="dash-medical-title" class="dash-medical__title">Yaklaşan rapor bitişleri</h2>
+        <p class="dash-medical__lede">
+          <strong>{{ today.strftime('%d.%m.%Y') }}</strong> –
+          <strong>{{ medical_horizon_end.strftime('%d.%m.%Y') }}</strong>
+          arasında süresi dolacak sağlık raporları
+          <span class="muted">(mevzuat: veriliş + 1 yıl)</span>.
+        </p>
+      </div>
+      {% if expiring_reports %}
+      <p class="dash-medical__badge" aria-label="Uyarı sayısı">{{ expiring_reports | length }} kayıt</p>
+      {% endif %}
+    </header>
+
+    {% if expiring_reports %}
+    <ul class="dash-medical-list" role="list">
+      {% for r in expiring_reports %}
+      {% set days_left = r.days_until_expiry(today) %}
+      {% if days_left <= 7 %}
+        {% set urgency = 'urgent' %}
+      {% elif days_left <= 14 %}
+        {% set urgency = 'soon' %}
+      {% else %}
+        {% set urgency = 'calm' %}
+      {% endif %}
+      <li class="dash-medical-item dash-medical-item--{{ urgency }}" role="listitem">
+        <div class="dash-medical-item__main">
+          <span class="dash-medical-item__id mono" title="Rapor ID">#{{ r.id }}</span>
+          <span class="dash-medical-item__inst">{{ r.institution_name }}</span>
+        </div>
+        <div class="dash-medical-item__dates">
+          <span class="dash-medical-item__date"><span class="dash-medical-item__dl">Veriliş</span> {{ r.issued_on.strftime('%d.%m.%Y') }}</span>
+          <span class="dash-medical-item__date dash-medical-item__date--end"><span class="dash-medical-item__dl">Bitiş</span> {{ r.expires_on().strftime('%d.%m.%Y') }}</span>
+        </div>
+        <p class="dash-medical-item__countdown">
+          {% if days_left == 0 %}
+            <strong>Bugün</strong> son gün
+          {% elif days_left == 1 %}
+            <strong>Yarın</strong> son gün
+          {% else %}
+            Bitişe <strong>{{ days_left }} gün</strong>
+          {% endif %}
+        </p>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="dash-medical-empty muted">Bu 30 günlük pencerede süresi dolacak rapor yok. Tüm listeyi <a href="/ui/members">üyeler</a> sayfasında görüntüleyebilirsiniz.</p>
+    {% endif %}
+  </section>
+
+  <nav class="dash-shortcuts" aria-label="Hızlı bağlantılar">
+    <a class="dash-shortcuts__link" href="/ui/members">Üye kayıtları</a>
+    <a class="dash-shortcuts__link" href="/ui/packages"><span class="mono">{{ package_count }}</span> paket tanımı</a>
+    <a class="dash-shortcuts__link dash-shortcuts__link--quiet" href="/ui/members#raporlar">Rapor arşivi</a>
+  </nav>
+</div>
+
+<script type="application/json" id="dash-data">{{ chart_json | safe }}</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (typeof Chart === 'undefined') return;
+  var el = document.getElementById('dash-data');
+  if (!el) return;
+  var data = JSON.parse(el.textContent);
+  var grid = 'rgba(28, 25, 23, 0.08)';
+  Chart.defaults.color = '#57534d';
+  Chart.defaults.borderColor = 'rgba(28, 25, 23, 0.08)';
+
+  new Chart(document.getElementById('chartTrend'), {
+    type: 'line',
+    data: {
+      labels: data.trend.labels,
+      datasets: [{
+        label: 'Ödeme (₺)',
+        data: data.trend.values,
+        borderColor: '#1d4ed8',
+        backgroundColor: 'rgba(29, 78, 216, 0.08)',
+        fill: true,
+        tension: 0.35,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, grid: { color: grid } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  var bEl = document.getElementById('chartBudget');
+  var bFb = document.getElementById('budgetFallback');
+  if (data.budget.labels.length) {
+    new Chart(bEl, {
+      type: 'bar',
+      data: {
+        labels: data.budget.labels,
+        datasets: [
+          { label: 'Planlanan', data: data.budget.planned, backgroundColor: 'rgba(120, 113, 108, 0.5)' },
+          { label: 'Gerçekleşen', data: data.budget.actual, backgroundColor: 'rgba(29, 78, 216, 0.45)' }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: grid } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  } else {
+    bEl.style.display = 'none';
+    bFb.hidden = false;
+  }
+
+  var eq = data.equipment;
+  var eqCanvas = document.getElementById('chartEquip');
+  if (eq.labels.length) {
+    new Chart(eqCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: eq.labels,
+        datasets: [{
+          data: eq.values,
+          backgroundColor: ['#57534d', '#78716c', '#a8a29e', '#d6d3d1'],
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  } else if (eqCanvas && eqCanvas.parentElement) {
+    eqCanvas.parentElement.style.display = 'none';
+  }
+});
+</script>
+{% endblock %}
