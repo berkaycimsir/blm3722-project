@@ -2,7 +2,7 @@
 
 Python **FastAPI** app with **SQLite** (`gym.db` — one file, no server setup).
 
-**Full project context** (UML, traceability, Turkish brief for the course): [`docs/MODEL_REFERENCE.md`](docs/MODEL_REFERENCE.md)
+**Full project context** (UML, traceability, course-oriented detail): [`docs/MODEL_REFERENCE.md`](docs/MODEL_REFERENCE.md) — **English**.
 
 ## Setup
 
