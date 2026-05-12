@@ -1,8 +1,8 @@
-# Gym management (Spor Salonu Yönetim Bilgi Sistemi)
+# Gym management — BLM3722
 
 Python **FastAPI** app with **SQLite** (`gym.db` — one file, no server setup).
 
-**Tam proje / ödev bağlamı (UML, izlenebilirlik, AI):** [`docs/MODEL_REFERENCE.md`](docs/MODEL_REFERENCE.md)
+**Full project context** (UML, traceability, Turkish brief for the course): [`docs/MODEL_REFERENCE.md`](docs/MODEL_REFERENCE.md)
 
 ## Setup
 

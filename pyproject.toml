@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "gym-management"
 version = "0.1.0"
-description = "Spor Salonu Yönetim Bilgi Sistemi — course project backend"
+description = "Gym management information system — BLM3722 course project backend (FastAPI, SQLite)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -19,9 +19,9 @@ def create_app() -> FastAPI:
     seed_if_empty()
 
     app = FastAPI(
-        title="Spor Salonu Yönetim Bilgi Sistemi",
+        title="Gym management information system",
         version="0.1.0",
-        description="Course project API — gym management domain (Topic 3).",
+        description="BLM3722 course project API — gym management domain (Topic 3).",
     )
     app.mount(
         "/ui/static",
